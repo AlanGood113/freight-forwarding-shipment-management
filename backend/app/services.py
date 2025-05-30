@@ -73,23 +73,38 @@ def handle_missing_values(strategy: str = "reject") -> List[Dict[str, Any]]:
         raise ValueError(f"Unknown missing-value strategy: {strategy}")
 
 
-def cargo_consolidation() -> List[Dict[str, Any]]:
+def cargo_consolidation(
+    destination: Optional[str] = None,
+    departure_date: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """
-    Suggest shipments that can be grouped by destination and departure_date
-    when multiple shipments share those, returning each group with count and IDs.
+    Suggest shipments that can be consolidated by destination and departure_date,
+    optionally filtered by those fields.
     """
-    sql = """
+    filters = []
+    params: List[Any] = []
+
+    if destination:
+        filters.append("destination = ?")
+        params.append(destination)
+    if departure_date:
+        filters.append("departure_date = ?")
+        params.append(departure_date)
+
+    where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+    sql = f"""
     SELECT
       destination,
       departure_date,
       COUNT(*) AS group_count,
       STRING_AGG(CAST(shipment_id AS VARCHAR), ',') AS shipment_ids
     FROM shipments
-    WHERE departure_date IS NOT NULL
+    {where_clause}
     GROUP BY destination, departure_date
     HAVING COUNT(*) > 1;
     """
-    return run_query(sql)
+    return run_query(sql, tuple(params))
 
 
 def warehouse_utilization() -> Dict[str, Any]:
@@ -105,25 +120,52 @@ def warehouse_utilization() -> Dict[str, Any]:
     return {"total_volume": total_volume, "utilization_percent": utilization}
 
 
-def get_shipments(page: int = 1, page_size: int = 100) -> List[Dict[str, Any]]:
+def get_shipments(
+    page: int = 1,
+    page_size: int = 100,
+    status: Optional[str] = None,
+    destination: Optional[str] = None,
+    carrier: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     """
-    Retrieve a paginated list of shipments.
+    Retrieve a paginated list of shipments, optionally filtered.
 
     Args:
       - page: 1-based page number
       - page_size: number of shipments per page
+      - status: filter by shipment status
+      - destination: filter by destination code
+      - carrier: filter by carrier name
 
     Returns:
       - List of shipment records for the requested page
     """
     offset = (page - 1) * page_size
-    sql = """
+
+    where_clauses = []
+    params: List[Any] = []
+
+    if status:
+        where_clauses.append("status = ?")
+        params.append(status)
+    if destination:
+        where_clauses.append("destination = ?")
+        params.append(destination)
+    if carrier:
+        where_clauses.append("carrier = ?")
+        params.append(carrier)
+
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+    sql = f"""
     SELECT *
     FROM shipments
+    {where_sql}
     ORDER BY shipment_id
     LIMIT ? OFFSET ?;
     """
-    return run_query(sql, (page_size, offset))
+    params.extend([page_size, offset])
+    return run_query(sql, tuple(params))
 
 
 def get_shipment_details(shipment_id: int) -> Optional[Dict[str, Any]]:
@@ -139,3 +181,123 @@ def get_shipment_details(shipment_id: int) -> Optional[Dict[str, Any]]:
     sql = "SELECT * FROM shipments WHERE shipment_id = ?;"
     results = run_query(sql, (shipment_id,))
     return results[0] if results else None
+
+
+def summary_statistics() -> Dict[str, Any]:
+    """
+    Returns overall summary:
+      - total_shipments
+      - on_time (delivered)
+      - delayed (not yet delivered)
+      - warehouse_utilization (total_volume & percent)
+    """
+    # Total shipments
+    total = run_query("SELECT COUNT(*) AS total_shipments FROM shipments;")[0][
+        "total_shipments"
+    ]
+
+    # On-time vs delayed
+    counts = run_query(
+        """
+        SELECT
+          SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) AS on_time,
+          SUM(CASE WHEN status != 'delivered' THEN 1 ELSE 0 END) AS delayed
+        FROM shipments;
+    """
+    )[0]
+
+    # Warehouse usage
+    utilization = warehouse_utilization()
+
+    return {
+        "total_shipments": total,
+        "on_time": counts["on_time"],
+        "delayed": counts["delayed"],
+        "warehouse_utilization": utilization,
+    }
+
+
+def received_count_by_carrier(
+    start_date: Optional[str] = None, end_date: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Returns count of shipments received per carrier per day,
+    optionally filtered by arrival_date between start_date and end_date.
+
+    Args:
+      - start_date: 'YYYY-MM-DD' string, inclusive lower bound
+      - end_date:   'YYYY-MM-DD' string, inclusive upper bound
+
+    Returns:
+      - List of { arrival_date, carrier, count }
+    """
+    params: list[Any] = []
+    where_clauses: list[str] = []
+
+    if start_date:
+        where_clauses.append("arrival_date >= ?")
+        params.append(start_date)
+    if end_date:
+        where_clauses.append("arrival_date <= ?")
+        params.append(end_date)
+
+    where_sql = ""
+    if where_clauses:
+        where_sql = "WHERE " + " AND ".join(where_clauses)
+
+    sql = f"""
+    SELECT
+      arrival_date,
+      carrier,
+      COUNT(*) AS count
+    FROM shipments
+    {where_sql}
+    GROUP BY arrival_date, carrier
+    ORDER BY arrival_date, carrier;
+    """
+    return run_query(sql, tuple(params))
+
+
+def volume_by_mode() -> List[Dict[str, Any]]:
+    """
+    Returns total shipment volume grouped by mode (air or sea).
+    """
+    sql = """
+    SELECT
+      mode,
+      SUM(volume) AS total_volume
+    FROM shipments
+    GROUP BY mode;
+    """
+    return run_query(sql)
+
+
+def throughput_over_time(
+    start_date: Optional[str] = None, end_date: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Returns number of packages received per day, optionally filtered
+    by arrival_date between start_date and end_date.
+    """
+    params: list[Any] = []
+    filters: list[str] = []
+
+    if start_date:
+        filters.append("arrival_date >= ?")
+        params.append(start_date)
+    if end_date:
+        filters.append("arrival_date <= ?")
+        params.append(end_date)
+
+    where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+
+    sql = f"""
+    SELECT
+      arrival_date,
+      COUNT(*) AS packages_received
+    FROM shipments
+    {where_clause}
+    GROUP BY arrival_date
+    ORDER BY arrival_date;
+    """
+    return run_query(sql, tuple(params))

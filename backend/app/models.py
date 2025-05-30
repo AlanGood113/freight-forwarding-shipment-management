@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, conint, constr, validator
 from datetime import date
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 
 
 class Shipment(BaseModel):
@@ -10,7 +10,7 @@ class Shipment(BaseModel):
     customer_id: conint(ge=10000, le=35000) = Field(
         ..., description="Customer identifier between 10000 and 35000"
     )
-    origin: constr(min_length=2, max_length=2, regex=r"^[A-Z]{2}$") = Field(
+    origin: constr(min_length=2, max_length=2, pattern=r"^[A-Z]{2}$") = Field(
         ..., description="Origin US state code (two uppercase letters)"
     )
     destination: Literal[
@@ -53,3 +53,12 @@ class Shipment(BaseModel):
         if status == "delivered" and v is None:
             raise ValueError("delivered_date is required when status is delivered")
         return v
+
+
+class ConsolidationScope(BaseModel):
+    destination: Optional[str]
+    departure_date: Optional[str]
+
+
+class ExportRequest(BaseModel):
+    scopes: List[ConsolidationScope]
