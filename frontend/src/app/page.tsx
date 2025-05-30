@@ -1,4 +1,3 @@
-// src/app/page.tsx
 "use client";
 
 import SummaryStats from "@/components/SummaryStats";
@@ -10,39 +9,60 @@ import ConsolidationRecommendations from "@/components/ConsolidationRecommendati
 
 export default function DashboardPage() {
   return (
-    <div className="p-10 space-y-12">
-      <h1 className="text-3xl font-bold">Dashboard</h1>
-
-      {/* 1. Summary */}
-      <section>
-        <h2 className="text-2xl mb-4">Summary Statistics</h2>
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-10">
+      {" "}
+      {/* Overall page styling */}
+      {/* Main Dashboard Title */}
+      <div className="container mx-auto py-8">
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-2">
+          Dashboard Overview
+        </h1>
+        <p className="text-lg text-gray-600">
+          Get a quick look at your key logistics metrics and recommendations.
+        </p>
+      </div>
+      {/* Summary Statistics Section */}
+      <section className="container mx-auto py-8">
+        <h2 className="text-3xl font-semibold text-gray-800 mb-6 border-b pb-3">
+          Summary Statistics
+        </h2>
         <SummaryStats />
       </section>
-
-      {/* 2. Charts */}
-      <section className="grid grid-cols-2 gap-8">
-        <div>
-          <h3 className="text-xl mb-2">Received Shipments by Carrier</h3>
-          <ReceivedByCarrierChart />
-        </div>
-        <div>
-          <h3 className="text-xl mb-2">Volume by Mode</h3>
-          <VolumeByModeChart />
+      {/* Charts Section */}
+      <section className="container mx-auto py-8">
+        <h2 className="text-3xl font-semibold text-gray-800 mb-6 border-b pb-3">
+          Operational Insights
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+          {" "}
+          {/* Responsive grid for charts */}
+          <div className="col-span-1">
+            <ReceivedByCarrierChart />
+          </div>
+          <div className="col-span-1">
+            <VolumeByModeChart />
+          </div>
         </div>
       </section>
-
-      <section>
-        <h3 className="text-xl mb-2">Warehouse Throughput Over Time</h3>
+      {/* Throughput Chart Section */}
+      <section className="container mx-auto py-8">
+        <h2 className="text-3xl font-semibold text-gray-800 mb-6 border-b pb-3">
+          Throughput Performance
+        </h2>
         <ThroughputChart />
       </section>
-
-      <section>
-        <h3 className="text-xl mb-2">Shipment Table</h3>
+      {/* Shipment Table Section */}
+      <section className="container mx-auto py-8">
+        <h2 className="text-3xl font-semibold text-gray-800 mb-6 border-b pb-3">
+          Recent Shipments
+        </h2>
         <ShipmentTable />
       </section>
-
-      <section>
-        <h3 className="text-xl mb-2">Consolidation Recommendations</h3>
+      {/* Consolidation Recommendations Section */}
+      <section className="container mx-auto py-8">
+        <h2 className="text-3xl font-semibold text-gray-800 mb-6 border-b pb-3">
+          Consolidation Opportunities
+        </h2>
         <ConsolidationRecommendations />
       </section>
     </div>

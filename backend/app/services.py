@@ -127,21 +127,7 @@ def get_shipments(
     destination: Optional[str] = None,
     carrier: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
-    """
-    Retrieve a paginated list of shipments, optionally filtered.
-
-    Args:
-      - page: 1-based page number
-      - page_size: number of shipments per page
-      - status: filter by shipment status
-      - destination: filter by destination code
-      - carrier: filter by carrier name
-
-    Returns:
-      - List of shipment records for the requested page
-    """
     offset = (page - 1) * page_size
-
     where_clauses = []
     params: List[Any] = []
 
@@ -157,15 +143,23 @@ def get_shipments(
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
-    sql = f"""
+    # 1️⃣ Count query
+    count_sql = f"SELECT COUNT(*) AS total FROM shipments {where_sql};"
+    total_count = run_query(count_sql, tuple(params))[0]["total"]
+
+    # 2️⃣ Page query
+    page_sql = f"""
     SELECT *
     FROM shipments
     {where_sql}
     ORDER BY shipment_id
     LIMIT ? OFFSET ?;
     """
-    params.extend([page_size, offset])
-    return run_query(sql, tuple(params))
+    # Add limit/offset params after the filter params
+    page_params = tuple(params) + (page_size, offset)
+    rows = run_query(page_sql, page_params)
+
+    return total_count, rows
 
 
 def get_shipment_details(shipment_id: int) -> Optional[Dict[str, Any]]:

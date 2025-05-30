@@ -118,26 +118,20 @@ async def get_warehouse_utilization():
     summary="List shipments with pagination and filters",
     status_code=status.HTTP_200_OK,
 )
+@router.get(
+    "/shipments",
+    summary="List shipments with pagination and filters",
+    status_code=status.HTTP_200_OK,
+)
 async def list_shipments(
-    page: int = Query(1, ge=1, description="Page number, starting from 1"),
-    page_size: int = Query(
-        100, ge=1, le=1000, description="Number of shipments per page"
-    ),
-    status: Optional[str] = Query(
-        None, description="Filter by status (delivered, intransit, received)"
-    ),
-    destination: Optional[str] = Query(
-        None, description="Filter by destination code (e.g. SVG, DOM)"
-    ),
-    carrier: Optional[str] = Query(
-        None, description="Filter by carrier (UPS, DHL, FEDEX, etc.)"
-    ),
-):
-    """
-    Retrieve a paginated, filtered list of shipments.
-    """
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=1000),
+    status: Optional[str] = Query(None),
+    destination: Optional[str] = Query(None),
+    carrier: Optional[str] = Query(None),
+) -> Dict[str, Any]:
     try:
-        shipments = get_shipments(
+        total_count, shipments = get_shipments(
             page=page,
             page_size=page_size,
             status=status,
@@ -149,10 +143,16 @@ async def list_shipments(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch shipments: {exc}",
         )
+
     return {
         "page": page,
         "page_size": page_size,
-        "filters": {"status": status, "destination": destination, "carrier": carrier},
+        "total_count": total_count,
+        "filters": {
+            "status": status,
+            "destination": destination,
+            "carrier": carrier,
+        },
         "shipments": shipments,
     }
 
