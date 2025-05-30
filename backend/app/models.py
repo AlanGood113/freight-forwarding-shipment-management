@@ -56,8 +56,8 @@ class Shipment(BaseModel):
 
 
 class ConsolidationScope(BaseModel):
-    destination: Optional[str]
-    departure_date: Optional[str]
+    destination: Optional[str] = None
+    arrival_date: Optional[str] = None
 
 
 class ExportRequest(BaseModel):

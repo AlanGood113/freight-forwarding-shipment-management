@@ -159,13 +159,13 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 dark:bg-slate-900 p-4 font-sans">
-      <div className="w-full max-w-lg p-6 sm:p-8 bg-white dark:bg-slate-800 rounded-xl shadow-2xl space-y-6">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-blue-50 p-4 font-sans">
+      <div className="w-full max-w-lg p-6 sm:p-8 bg-white rounded-xl shadow-2xl space-y-6 border border-blue-100">
         <div className="text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-slate-100">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
             Upload Shipments CSV
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-sm text-gray-600 mt-1">
             Drag and drop or click to select a single CSV file.
           </p>
         </div>
@@ -179,10 +179,10 @@ export default function UploadPage() {
           className={`relative flex flex-col items-center justify-center w-full h-48 sm:h-64 p-5 border-2 border-dashed rounded-lg cursor-pointer transition-colors duration-200 ease-in-out
             ${
               isDragging
-                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
-                : "border-gray-300 dark:border-slate-600 hover:border-gray-400 dark:hover:border-slate-500"
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 hover:border-gray-400"
             }
-            ${file ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30" : ""}`}
+            ${file ? "border-blue-500 bg-blue-50" : ""}`}
         >
           <input
             type="file"
@@ -198,9 +198,7 @@ export default function UploadPage() {
             {getIconForFile()}
             <p
               className={`mt-2 text-sm sm:text-base font-medium ${
-                isDragging
-                  ? "text-blue-600 dark:text-blue-300"
-                  : "text-gray-500 dark:text-slate-400"
+                isDragging ? "text-blue-600" : "text-gray-500"
               }`}
             >
               {file
@@ -210,7 +208,7 @@ export default function UploadPage() {
                 : "Drag & drop or click to upload"}
             </p>
             {!file && (
-              <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
+              <p className="mt-1 text-xs text-gray-400">
                 CSV files only, max 1 file.
               </p>
             )}
@@ -228,7 +226,7 @@ export default function UploadPage() {
                   ) as HTMLInputElement;
                   if (fileInput) fileInput.value = "";
                 }}
-                className="mt-3 text-xs text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-semibold"
+                className="mt-3 text-xs text-red-500 hover:text-red-700 font-semibold"
               >
                 Remove file
               </button>
@@ -240,7 +238,7 @@ export default function UploadPage() {
         <button
           onClick={upload}
           disabled={!file || status === "uploading"}
-          className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {status === "uploading" ? (
             <>
@@ -260,7 +258,7 @@ export default function UploadPage() {
           onClick={closeModal} // Close modal on backdrop click
         >
           <div
-            className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-95 opacity-0 animate-modalEnter"
+            className="bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md transform transition-all duration-300 ease-in-out scale-95 opacity-0 animate-modalEnter"
             onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
           >
             <div className="flex flex-col items-center text-center">
@@ -274,12 +272,12 @@ export default function UploadPage() {
                 <Loader2 className="w-16 h-16 text-blue-500 animate-spin mb-4" />
               )}
 
-              <h2 className="text-xl sm:text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-2">
+              <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-2">
                 {status === "success" && "Upload Successful!"}
                 {status === "error" && "Upload Failed"}
                 {status === "uploading" && "Processing..."}
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+              <p className="text-sm text-gray-600 mb-6">
                 {msg ||
                   (status === "uploading"
                     ? "Please wait while we process your file."
@@ -290,7 +288,7 @@ export default function UploadPage() {
                 {status === "success" && (
                   <button
                     onClick={handleModalNext}
-                    className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-white"
                   >
                     Next
                   </button>
@@ -298,7 +296,7 @@ export default function UploadPage() {
                 {status === "error" && (
                   <button
                     onClick={closeModal}
-                    className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-white"
                   >
                     Close
                   </button>
@@ -311,8 +309,9 @@ export default function UploadPage() {
       )}
       {/* Simple footer */}
       <footer className="mt-8 text-center">
-        <p className="text-xs text-slate-500 dark:text-slate-400">
-          &copy; {new Date().getFullYear()} Alan R. Gooding. All rights reserved.
+        <p className="text-xs text-gray-500">
+          &copy; {new Date().getFullYear()} Alan R. Gooding. All rights
+          reserved.
         </p>
       </footer>
       {/* Add a style tag for the animation if not using a global CSS file */}

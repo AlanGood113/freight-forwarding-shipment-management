@@ -27,17 +27,18 @@ async def get_cargo_consolidation(
     destination: Optional[str] = Query(
         None, description="Filter by destination code (e.g. SVG, DOM)"
     ),
-    departure_date: Optional[str] = Query(
-        None, description="Filter by departure date (YYYY-MM-DD)"
+    arrival_date: Optional[str] = Query(
+        None, description="Filter by arrival date (YYYY-MM-DD)"
     ),
 ):
     """
     Returns groups of shipments that can be consolidated,
-    optionally filtered by destination and departure_date.
+    optionally filtered by destination and arrival_date.
     """
     try:
         groups = cargo_consolidation(
-            destination=destination, departure_date=departure_date
+            destination=destination,
+            arrival_date=arrival_date,
         )
     except Exception as exc:
         raise HTTPException(
@@ -54,28 +55,27 @@ async def get_cargo_consolidation(
 )
 async def export_consolidation(req: ExportRequest):
     """
-    Accepts a list of {destination, departure_date} filters,
+    Accepts a list of {destination, arrival_date} filters,
     fetches the matching consolidation groups, and returns a CSV file.
     """
     try:
-        # aggregate rows from each scope
         rows = []
-        for scope in req.scopes:
-            groups = cargo_consolidation(
-                destination=scope.destination,
-                departure_date=scope.departure_date,
-            )
-            rows.extend(groups)
-
-        # if no scopes provided, export all
-        if not req.scopes:
+        # Export per-scope or all if none
+        if req.scopes:
+            for scope in req.scopes:
+                groups = cargo_consolidation(
+                    destination=scope.destination,
+                    arrival_date=scope.arrival_date,
+                )
+                rows.extend(groups)
+        else:
             rows = cargo_consolidation()
 
         # build CSV in-memory
         buffer = io.StringIO()
         writer = csv.DictWriter(
             buffer,
-            fieldnames=["destination", "departure_date", "group_count", "shipment_ids"],
+            fieldnames=["destination", "arrival_date", "group_count", "shipments"],
         )
         writer.writeheader()
         writer.writerows(rows)
@@ -118,17 +118,21 @@ async def get_warehouse_utilization():
     summary="List shipments with pagination and filters",
     status_code=status.HTTP_200_OK,
 )
-@router.get(
-    "/shipments",
-    summary="List shipments with pagination and filters",
-    status_code=status.HTTP_200_OK,
-)
 async def list_shipments(
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=1000),
     status: Optional[str] = Query(None),
     destination: Optional[str] = Query(None),
     carrier: Optional[str] = Query(None),
+    arrival_date_start: Optional[str] = Query(
+        None, description="Filter arrival_date >= YYYY-MM-DD"
+    ),
+    arrival_date_end: Optional[str] = Query(
+        None, description="Filter arrival_date <= YYYY-MM-DD"
+    ),
+    search: Optional[int] = Query(
+        None, description="Search by shipment_id or customer_id"
+    ),
 ) -> Dict[str, Any]:
     try:
         total_count, shipments = get_shipments(
@@ -137,6 +141,9 @@ async def list_shipments(
             status=status,
             destination=destination,
             carrier=carrier,
+            arrival_date_start=arrival_date_start,
+            arrival_date_end=arrival_date_end,
+            search=search,
         )
     except Exception as exc:
         raise HTTPException(
@@ -152,6 +159,9 @@ async def list_shipments(
             "status": status,
             "destination": destination,
             "carrier": carrier,
+            "arrival_date_start": arrival_date_start,
+            "arrival_date_end": arrival_date_end,
+            "search": search,
         },
         "shipments": shipments,
     }

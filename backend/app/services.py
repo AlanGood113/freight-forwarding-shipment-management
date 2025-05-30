@@ -1,5 +1,6 @@
 from typing import List, Dict, Any, Optional
-from .db import run_query
+from .db import DB_FILE, get_connection, run_query
+import os
 
 # Total warehouse capacity in cubic centimeters
 WAREHOUSE_CAPACITY_CM3 = 60_000_000_000
@@ -75,47 +76,68 @@ def handle_missing_values(strategy: str = "reject") -> List[Dict[str, Any]]:
 
 def cargo_consolidation(
     destination: Optional[str] = None,
-    departure_date: Optional[str] = None,
+    arrival_date: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """
-    Suggest shipments that can be consolidated by destination and departure_date,
-    optionally filtered by those fields.
+    Suggest shipments in status='received' that arrived on the same day
+    to the same destination, optionally filtered by those fields.
+    Returns destination, arrival_date, group_count, and
+    shipments as a list of { shipment_id, customer_id }.
     """
-    filters = []
+    filters = ["status = 'received'"]
     params: List[Any] = []
 
     if destination:
         filters.append("destination = ?")
         params.append(destination)
-    if departure_date:
-        filters.append("departure_date = ?")
-        params.append(departure_date)
+    if arrival_date:
+        filters.append("arrival_date = ?")
+        params.append(arrival_date)
 
-    where_clause = f"WHERE {' AND '.join(filters)}" if filters else ""
+    where_clause = "WHERE " + " AND ".join(filters)
 
+    # Pull back the raw string so we can split it client-side:
     sql = f"""
     SELECT
       destination,
-      departure_date,
+      arrival_date,
       COUNT(*) AS group_count,
-      STRING_AGG(CAST(shipment_id AS VARCHAR), ',') AS shipment_ids
+      STRING_AGG(
+        CAST(shipment_id AS VARCHAR) || ':' || CAST(customer_id AS VARCHAR),
+        ','
+      ) AS shipments
     FROM shipments
     {where_clause}
-    GROUP BY destination, departure_date
+    GROUP BY destination, arrival_date
     HAVING COUNT(*) > 1;
     """
-    return run_query(sql, tuple(params))
+    rows = run_query(sql, tuple(params))
+
+    # Transform the comma-string into a real list of dicts:
+    for row in rows:
+        pairs = row["shipments"].split(",")
+        row["shipments"] = [
+            {"shipment_id": int(p.split(":")[0]), "customer_id": int(p.split(":")[1])}
+            for p in pairs
+        ]
+
+    return rows
 
 
 def warehouse_utilization() -> Dict[str, Any]:
     """
-    Calculate warehouse utilization: total volume vs capacity.
+    Calculate warehouse utilization based on shipments currently in the warehouse.
+    Only shipments with status='received' occupy warehouse space.
 
     Returns:
       { total_volume: int, utilization_percent: float }
     """
-    result = run_query("SELECT SUM(volume) AS total_volume FROM shipments;")
-    total_volume = result[0].get("total_volume") or 0
+    sql = (
+        "SELECT COALESCE(SUM(volume), 0) AS total_volume "
+        "FROM shipments WHERE status = 'received';"
+    )
+    result = run_query(sql)
+    total_volume = result[0].get("total_volume", 0)
     utilization = (total_volume / WAREHOUSE_CAPACITY_CM3) * 100
     return {"total_volume": total_volume, "utilization_percent": utilization}
 
@@ -126,7 +148,10 @@ def get_shipments(
     status: Optional[str] = None,
     destination: Optional[str] = None,
     carrier: Optional[str] = None,
-) -> List[Dict[str, Any]]:
+    arrival_date_start: Optional[str] = None,
+    arrival_date_end: Optional[str] = None,
+    search: Optional[int] = None,
+) -> (int, List[Dict[str, Any]]):
     offset = (page - 1) * page_size
     where_clauses = []
     params: List[Any] = []
@@ -140,22 +165,30 @@ def get_shipments(
     if carrier:
         where_clauses.append("carrier = ?")
         params.append(carrier)
+    if arrival_date_start:
+        where_clauses.append("arrival_date >= ?")
+        params.append(arrival_date_start)
+    if arrival_date_end:
+        where_clauses.append("arrival_date <= ?")
+        params.append(arrival_date_end)
+    if search is not None:
+        where_clauses.append("(shipment_id = ? OR customer_id = ?)")
+        params.extend([search, search])
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
 
-    # 1️⃣ Count query
+    # Count total
     count_sql = f"SELECT COUNT(*) AS total FROM shipments {where_sql};"
     total_count = run_query(count_sql, tuple(params))[0]["total"]
 
-    # 2️⃣ Page query
+    # Fetch page
     page_sql = f"""
-    SELECT *
-    FROM shipments
-    {where_sql}
-    ORDER BY shipment_id
-    LIMIT ? OFFSET ?;
+        SELECT *
+        FROM shipments
+        {where_sql}
+        ORDER BY shipment_id
+        LIMIT ? OFFSET ?;
     """
-    # Add limit/offset params after the filter params
     page_params = tuple(params) + (page_size, offset)
     rows = run_query(page_sql, page_params)
 
@@ -295,3 +328,41 @@ def throughput_over_time(
     ORDER BY arrival_date;
     """
     return run_query(sql, tuple(params))
+
+
+def check_db_status() -> Dict[str, Any]:
+    """
+    Check whether the DuckDB file exists and if it has any shipments loaded.
+    Returns:
+      {
+        exists: bool,
+        loaded: bool,
+        total_shipments: int
+      }
+    """
+    if not os.path.exists(DB_FILE):
+        return {"exists": False, "loaded": False, "total_shipments": 0}
+
+    # File exists; see if the shipments table has any rows
+    try:
+        tables = run_query("PRAGMA show_tables;")
+        if not any(t["name"] == "shipments" for t in tables):
+            return {"exists": True, "loaded": False, "total_shipments": 0}
+
+        total = run_query("SELECT COUNT(*) AS total_shipments FROM shipments;")[0][
+            "total_shipments"
+        ]
+        return {"exists": True, "loaded": total > 0, "total_shipments": total}
+    except Exception:
+        return {"exists": True, "loaded": False, "total_shipments": 0}
+
+
+def delete_db_file() -> bool:
+    """
+    Delete the on-disk DuckDB file to reset state.
+    Returns True if file was deleted, False if it did not exist.
+    """
+    if os.path.exists(DB_FILE):
+        os.remove(DB_FILE)
+        return True
+    return False

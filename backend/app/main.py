@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import upload, metrics
+from .routers import upload, metrics, admin
 
 app = FastAPI()
 
@@ -16,3 +16,4 @@ app.add_middleware(
 # Register routers
 app.include_router(upload.router, prefix="/upload")
 app.include_router(metrics.router, prefix="/metrics")
+app.include_router(admin.router, prefix="/admin")
