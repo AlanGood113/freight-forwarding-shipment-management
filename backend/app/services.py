@@ -30,50 +30,6 @@ def dedupe_shipments() -> int:
     return removed
 
 
-def handle_missing_values(strategy: str = "reject") -> List[Dict[str, Any]]:
-    """
-    Handle missing values in the shipments table.
-
-    Args:
-      - strategy: 'reject' to list rows with missing required fields,
-                  'fill_zero' to set missing numeric fields to zero.
-
-    Returns:
-      - If 'reject', a list of invalid rows; otherwise empty list.
-    """
-    required_cols = [
-        "shipment_id",
-        "customer_id",
-        "origin",
-        "destination",
-        "weight",
-        "volume",
-        "carrier",
-        "mode",
-        "status",
-        "arrival_date",
-    ]
-
-    if strategy == "reject":
-        cond = " OR ".join([f"{col} IS NULL" for col in required_cols])
-        sql = f"SELECT * FROM shipments WHERE {cond};"
-        return run_query(sql)
-
-    elif strategy == "fill_zero":
-        sql = """
-        UPDATE shipments
-        SET
-            weight = COALESCE(weight, 0),
-            volume = COALESCE(volume, 0)
-        WHERE weight IS NULL OR volume IS NULL;
-        """
-        run_query(sql)
-        return []
-
-    else:
-        raise ValueError(f"Unknown missing-value strategy: {strategy}")
-
-
 def cargo_consolidation(
     destination: Optional[str] = None,
     arrival_date: Optional[str] = None,

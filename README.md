@@ -2,7 +2,7 @@
 
 A full-stack logistics dashboard to manage and analyze cargo shipments.
 
-- **Backend**: FastAPI + DuckDB for data ingestion, analytics, and admin operations  
+- **Backend**: FastAPI + DuckDB for data ingestion, analytics, and admin operations
 - **Frontend**: Next.js (App Router) + TailwindCSS + lucide-react + recharts for interactive dashboards
 
 > **Created by Alan R. Gooding**
@@ -12,17 +12,19 @@ A full-stack logistics dashboard to manage and analyze cargo shipments.
 ## Table of Contents
 
 1. [Prerequisites]
-2. [Backend Setup (FastAPI)] 
-3. [Frontend Setup (Next.js)] 
+2. [Backend Setup (FastAPI)]
+3. [Frontend Setup (Next.js)]
+4. [Design Decisions & Assumptions]
+5. [How to Use the Project]
 
 ---
 
 ## Prerequisites
 
-- **Node.js** ≥ 18 with npm or yarn  
-- **Python** ≥ 3.10  
-- **DuckDB** (installed via pip)  
-- Git  
+- **Node.js** ≥ 18 with npm or yarn
+- **Python** ≥ 3.10
+- **DuckDB** (installed via pip)
+- Git
 
 ---
 
@@ -65,3 +67,35 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 npm run dev
 ```
 
+## Design Decisions & Assumptions
+
+### UI Design
+
+The UI was intentionally kept minimalist and easy to use to ensure clarity and focus. TailwindCSS and lucide-react were chosen to deliver a clean, responsive experience with visually consistent icons and charts.
+
+### Assumptions
+
+    •	It is assumed that input data is clean and complete.
+    •	There is no functionality to edit or impute missing values, so missing or invalid fields are not handled.
+    •	The application expects the CSV format and column structure to match the expected schema.
+
+## How to Use the Project
+
+    1.	Login
+    •	Navigate to http://localhost:3000/login
+    •	Use the following credentials:
+            Username: admin
+            Password: AdminPassword123
+    2.	Upload Shipments (If no DB data)
+    •	If no DuckDB file or data exists, you will be redirected to the Upload CSV page.
+    •	Upload a CSV file containing your shipment data.
+    •	A modal will show success or failure of the upload process.
+    3.	View Dashboard
+    •	After uploading, you will be redirected to the Dashboard where you can view:
+    •	Summary stats
+    •	Shipment trends by carrier and mode
+    •	Shipment table with filters
+    •	Consolidation recommendations
+    4.	Logout
+    •	Logging out will delete the DuckDB file from the backend to clear all data.
+    •	You will be redirected to the login page.
